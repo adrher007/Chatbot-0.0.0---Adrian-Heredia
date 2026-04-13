@@ -1,0 +1,448 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "code",
+      "source": [
+        "!pip install -q requests\n",
+        "import requests\n",
+        "import json\n",
+        "print(\"Listo para conectar a HuggingFace\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "RdLcpO_3jIuw",
+        "outputId": "371fccbb-0e4f-4792-92eb-80cb13fedaca"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Listo para conectar a HuggingFace\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "HF_TOKEN = \"hf_XXXXXXXXXXXXXXXXXXXXXXXX\"\n",
+        "MODELO = \"HuggingFaceH4/zephyr-7b-beta\"\n",
+        "API_URL = f\"https://api-inference.huggingface.co/models/{MODELO}\" # Nota: Esta URL fue funcional en su momento, pero ahora devuelve un error 410 (Gone), indicando que el endpoint ya no existe o se ha movido.\n",
+        "HEADERS = {\"Authorization\": f\"Bearer {HF_TOKEN}\"}\n",
+        "print(f\"✓ Modelo configurado: {MODELO}\")\n",
+        "print(f\"✓ URL de la API: {API_URL}\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "RNB2996ujLr1",
+        "outputId": "987451cb-6151-4553-f12a-699c3848a8a2"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "✓ Modelo configurado: HuggingFaceH4/zephyr-7b-beta\n",
+            "✓ URL de la API: https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def llamar_modelo(mensaje, temperatura=0.7, max_tokens=200):\n",
+        "    payload = {\n",
+        "        \"inputs\": mensaje,\n",
+        "        \"parameters\": {\n",
+        "            \"temperature\":   temperatura,\n",
+        "            \"max_new_tokens\": max_tokens,\n",
+        "            \"return_full_text\": False\n",
+        "        }\n",
+        "    }\n",
+        "    respuesta = requests.post(API_URL, headers=HEADERS, json=payload)\n",
+        "    if respuesta.status_code == 200:\n",
+        "        return respuesta.json()[0][\"generated_text\"].strip()\n",
+        "    else:\n",
+        "        return f\"Error {respuesta.status_code}: {respuesta.text}\"\n",
+        "\n",
+        "respuesta = llamar_modelo(\"¿Qué es la inteligencia artificial en una frase?\")\n",
+        "print(\"Respuesta del modelo:\")\n",
+        "print(respuesta)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "yRNnJ7FCjNh7",
+        "outputId": "0d365809-92e9-4bf9-8e97-43619975aeef"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Respuesta del modelo:\n",
+            "Error 410: {\"error\":\"https://api-inference.huggingface.co is no longer supported. Please use https://router.huggingface.co instead.\"}\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "SYSTEM_PROMPT = \"\"\"\n",
+        "Eres Clancy, un experto en Calculo 1.\n",
+        "Respondes siempre en español, de forma Academico pero Amigable.\n",
+        "[RESTRICCIÓN 1: No puedes salirte del contexto y no puedes dar soluciones de entrada, haces razonar antes de solucionar]\n",
+        "[RESTRICCIÓN 2: Te disculpas por no poder ayudar en el tema que el usuario menciona]\n",
+        "[FORMATO: Para ejercicios muestras formulas y ecuaciones LaTeX, para preguntas simples texto con ejemplos sencillos]\n",
+        "\"\"\"\n",
+        "\n",
+        "print(\"System prompt definido:\")\n",
+        "print(\"-\" * 40)\n",
+        "print(SYSTEM_PROMPT)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "1ixdWZeEjQDo",
+        "outputId": "4b61697f-e316-49fb-b0a9-799e7707be96"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "System prompt definido:\n",
+            "----------------------------------------\n",
+            "\n",
+            "Eres Clancy, un experto en Calculo 1.\n",
+            "Respondes siempre en español, de forma Academico pero Amigable.\n",
+            "[RESTRICCIÓN 1: No puedes salirte del contexto y no puedes dar soluciones de entrada, haces razonar antes de solucionar]\n",
+            "[RESTRICCIÓN 2: Te disculpas por no poder ayudar en el tema que el usuario menciona]\n",
+            "[FORMATO: Para ejercicios muestras formulas y ecuaciones LaTeX, para preguntas simples texto con ejemplos sencillos]\n",
+            "\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def chatbot_responder(pregunta_usuario, temperatura=0.7):\n",
+        "    prompt_completo = f\"\"\"<|system|>\n",
+        "{SYSTEM_PROMPT}\n",
+        "<|user|>\n",
+        "{pregunta_usuario}\n",
+        "<|assistant|>\"\"\"\n",
+        "\n",
+        "    respuesta = llamar_modelo(prompt_completo, temperatura)\n",
+        "    return respuesta\n",
+        "\n",
+        "mi_pregunta = \"Hola, ¿quién eres y en qué me puedes ayudar?\"\n",
+        "resp = chatbot_responder(mi_pregunta)\n",
+        "print(f\"Usuario: {mi_pregunta}\")\n",
+        "print(f\"Chatbot: {resp}\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "daRmibCbkfJ4",
+        "outputId": "fac187c4-31a0-4aa0-c720-e25a48cbbf40"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Usuario: Hola, ¿quién eres y en qué me puedes ayudar?\n",
+            "Chatbot: Error 410: {\"error\":\"https://api-inference.huggingface.co is no longer supported. Please use https://router.huggingface.co instead.\"}\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "historial = []\n",
+        "\n",
+        "def chatbot_con_memoria(pregunta_usuario, temperatura=0.7):\n",
+        "    historial.append({\"role\": \"user\", \"content\": pregunta_usuario})\n",
+        "\n",
+        "    prompt = f\"<|system|>\\n{SYSTEM_PROMPT}\\n\"\n",
+        "    for msg in historial:\n",
+        "        rol  = \"user\" if msg[\"role\"] == \"user\" else \"assistant\"\n",
+        "        prompt += f\"<|{rol}|>\\n{msg['content']}\\n\"\n",
+        "    prompt += \"<|assistant|>\"\n",
+        "\n",
+        "    respuesta = llamar_modelo(prompt, temperatura)\n",
+        "\n",
+        "    historial.append({\"role\": \"assistant\", \"content\": respuesta})\n",
+        "    return respuesta\n",
+        "\n",
+        "def reiniciar_chat():\n",
+        "    global historial\n",
+        "    historial = []\n",
+        "    print(\"✓ Conversación reiniciada\")\n",
+        "\n",
+        "reiniciar_chat()\n",
+        "for pregunta in [\n",
+        "    \"Hola, ¿puedes ayudarme?\",\n",
+        "    \"¿Qué fue lo primero que te pregunté?\",\n",
+        "    \"Gracias, ¿puedes resumir nuestra conversación?\"\n",
+        "]:\n",
+        "    print(f\"\\n👤 {pregunta}\")\n",
+        "    print(f\"🤖 {chatbot_con_memoria(pregunta)}\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "9FxLNw3qkiRX",
+        "outputId": "97b036a4-d9ae-4f9a-fa6c-ed3350a15959"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "✓ Conversación reiniciada\n",
+            "\n",
+            "👤 Hola, ¿puedes ayudarme?\n",
+            "🤖 Error 410: {\"error\":\"https://api-inference.huggingface.co is no longer supported. Please use https://router.huggingface.co instead.\"}\n",
+            "\n",
+            "👤 ¿Qué fue lo primero que te pregunté?\n",
+            "🤖 Error 410: {\"error\":\"https://api-inference.huggingface.co is no longer supported. Please use https://router.huggingface.co instead.\"}\n",
+            "\n",
+            "👤 Gracias, ¿puedes resumir nuestra conversación?\n",
+            "🤖 Error 410: {\"error\":\"https://api-inference.huggingface.co is no longer supported. Please use https://router.huggingface.co instead.\"}\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "reiniciar_chat()\n",
+        "print(\"═══════════════════════════════════════\")\n",
+        "print(f\"  Chatbot activado — tema: {SYSTEM_PROMPT[:50]}...\")\n",
+        "print(\"  Escribe 'salir' para terminar\")\n",
+        "print(\"═══════════════════════════════════════\\n\")\n",
+        "\n",
+        "while True:\n",
+        "    entrada = input(\"👤 Tú: \").strip()\n",
+        "\n",
+        "    if entrada.lower() in [\"salir\", \"exit\", \"quit\", \"bye\"]:\n",
+        "        print(\"🤖 Hasta luego. ¡Fue un placer ayudarte!\")\n",
+        "        stats_conversacion()\n",
+        "        break\n",
+        "\n",
+        "    if not entrada:\n",
+        "        continue\n",
+        "\n",
+        "    respuesta = chatbot_con_memoria(entrada)\n",
+        "    print(f\"🤖 Chatbot: {respuesta}\\n\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 512
+        },
+        "id": "zRkIAvLQkm8u",
+        "outputId": "b65b0c20-9965-40da-b5e9-0a78bbf9f960"
+      },
+      "execution_count": 63,
+      "outputs": [
+        {
+          "metadata": {
+            "tags": null
+          },
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "✓ Conversación reiniciada\n",
+            "═══════════════════════════════════════\n",
+            "  Chatbot activado — tema: \n",
+            "Eres Clancy, un experto en Calculo 1.\n",
+            "Respondes s...\n",
+            "  Escribe 'salir' para terminar\n",
+            "═══════════════════════════════════════\n",
+            "\n"
+          ]
+        },
+        {
+          "output_type": "error",
+          "ename": "KeyboardInterrupt",
+          "evalue": "Interrupted by user",
+          "traceback": [
+            "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+            "\u001b[0;31mKeyboardInterrupt\u001b[0m                         Traceback (most recent call last)",
+            "\u001b[0;32m/tmp/ipykernel_565/2405050834.py\u001b[0m in \u001b[0;36m<cell line: 0>\u001b[0;34m()\u001b[0m\n\u001b[1;32m      6\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      7\u001b[0m \u001b[0;32mwhile\u001b[0m \u001b[0;32mTrue\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 8\u001b[0;31m     \u001b[0mentrada\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0minput\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"👤 Tú: \"\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mstrip\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      9\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     10\u001b[0m     \u001b[0;32mif\u001b[0m \u001b[0mentrada\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mlower\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32min\u001b[0m \u001b[0;34m[\u001b[0m\u001b[0;34m\"salir\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m\"exit\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m\"quit\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m\"bye\"\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.12/dist-packages/ipykernel/kernelbase.py\u001b[0m in \u001b[0;36mraw_input\u001b[0;34m(self, prompt)\u001b[0m\n\u001b[1;32m   1175\u001b[0m                 \u001b[0;34m\"raw_input was called, but this frontend does not support input requests.\"\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1176\u001b[0m             )\n\u001b[0;32m-> 1177\u001b[0;31m         return self._input_request(\n\u001b[0m\u001b[1;32m   1178\u001b[0m             \u001b[0mstr\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mprompt\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1179\u001b[0m             \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_parent_ident\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m\"shell\"\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.12/dist-packages/ipykernel/kernelbase.py\u001b[0m in \u001b[0;36m_input_request\u001b[0;34m(self, prompt, ident, parent, password)\u001b[0m\n\u001b[1;32m   1217\u001b[0m             \u001b[0;32mexcept\u001b[0m \u001b[0mKeyboardInterrupt\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1218\u001b[0m                 \u001b[0;31m# re-raise KeyboardInterrupt, to truncate traceback\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 1219\u001b[0;31m                 \u001b[0;32mraise\u001b[0m \u001b[0mKeyboardInterrupt\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"Interrupted by user\"\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfrom\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   1220\u001b[0m             \u001b[0;32mexcept\u001b[0m \u001b[0mException\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1221\u001b[0m                 \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mlog\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mwarning\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"Invalid Message:\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mexc_info\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mTrue\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;31mKeyboardInterrupt\u001b[0m: Interrupted by user"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "new_cell_1"
+      },
+      "source": [
+        "## System Prompt Completo y su Justificación\n",
+        "\n",
+        "Aquí presento el `SYSTEM_PROMPT` que **he** configurado para Clancy nuestro experto en Cálculo 1. La idea es muy clara y ojo mi objetivo es que la interacción sea efectiva y sobre todo enriquecedora para el usuario.\n",
+        "\n",
+        "```python\n",
+        "SYSTEM_PROMPT = \"\"\"\n",
+        "Eres Clancy, un experto en Calculo 1.\n",
+        "Respondes siempre en español, de forma Academico pero Amigable.\n",
+        "[RESTRICCIÓN 1: No puedes salirte del contexto y no puedes dar soluciones de entrada, haces razonar antes de solucionar]\n",
+        "[RESTRICCIÓN 2: Te disculpas por no poder ayudar en el tema que el usuario menciona]\n",
+        "[FORMATO: Para ejercicios muestras formulas y ecuaciones LaTeX, para preguntas simples texto con ejemplos sencillos]\n",
+        "\"\"\"\n",
+        "```\n",
+        "\n",
+        "### Justificación de cada componente:\n",
+        "\n",
+        "1.  **Rol Definido: `Eres Clancy, un experto en Calculo 1.`**\n",
+        "    *   **Motivo:** Importante. Se necesita que la identidad y especialización del asistente queden claras desde el inicio. Al presentarlo como 'Clancy un experto en Calculo 1' se genera una expectativa precisa y se delimita el alcance del modelo. Esto permite evitar divagaciones asegurando respuestas centradas en Calculo 1 y optimizando sin duda la utilidad para quien lo use.\n",
+        "\n",
+        "2.  **Tono y Lenguaje: `Respondes siempre en español, de forma Academico pero Amigable.`**\n",
+        "    *   **Motivo:** Mantener el español es fundamental para que la audiencia se sienta cómoda. Y la combinación de un estilo 'académico' pero 'amigable' ese es el toque clave. Busca un equilibrio perfecto por un lado se garantiza la precisión y el rigor conceptual que exige el calculo por otro se crea un ambiente de aprendizaje cercano y cero intimidatorio. Eso es lo que hace la diferencia para una experiencia de usuario superior.\n",
+        "\n",
+        "3.  **Restricción de Contexto y Razonamiento: `[RESTRICCIÓN 1: No puedes salirte del contexto y no puedes dar soluciones de entrada, haces razonar antes de solucionar]`**\n",
+        "    *   **Motivo:** Esta restricción es fundamental para fomentar el aprendizaje activo. Evitar que el modelo se vaya por las ramas y más importante aún que no suelte soluciones de golpe obliga al usuario a pensar críticamente. La idea es guiarlo por el razonamiento no solo se le da la respuesta en bandeja. Se busca un 'ayúdame a entender cómo llegar a la respuesta' no un simple 'dame la solución'.\n",
+        "\n",
+        "4.  **Restricción de Alcance: `[RESTRICCIÓN 2: Te disculpas por no poder ayudar en el tema que el usuario menciona]`**\n",
+        "    *   **Motivo:** Reconocer las limitaciones del modelo eso es ser transparente y profesional. Si alguien pregunta por algo ajeno a Cálculo 1 lo ideal es que el asistente se disculpe con educación y comunique la imposibilidad de asistir en el tema en lugar de inventar algo o dar una respuesta irrelevante. Así se mantiene la credibilidad y la confianza en la especialización de Clancy.\n",
+        "\n",
+        "5.  **Formato de Respuesta: `[FORMATO: Para ejercicios muestras formulas y ecuaciones LaTeX, para preguntas simples texto con ejemplos sencillos]`**\n",
+        "    *   **Motivo:** Un formato de respuesta claro y consistente sin duda mejora la lectura y la comprensión. Para los ejercicios de cálculo el uso de LaTeX es muy efectivo las fórmulas y ecuaciones resultan impecables lo cual es necesario en un tema técnico. Para preguntas más conceptuales un texto directo con ejemplos sencillos facilita la comprensión. La coherencia en el formato es un pilar fundamental para la efectividad de la comunicación."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 512
+        },
+        "id": "b45de4cb",
+        "outputId": "a16a0739-775e-4784-8733-eb3553d7113c"
+      },
+      "source": [
+        "reiniciar_chat()\n",
+        "print(\"═══════════════════════════════════════\")\n",
+        "print(f\"  Chatbot activado — tema: {SYSTEM_PROMPT[:50]}...\")\n",
+        "print(\"  Escribe 'salir' para terminar\")\n",
+        "print(\"═══════════════════════════════════════\\n\")\n",
+        "\n",
+        "while True:\n",
+        "    entrada = input(\"👤 Tú: \").strip()\n",
+        "\n",
+        "    if entrada.lower() in [\"salir\", \"exit\", \"quit\", \"bye\"]:\n",
+        "        print(\"🤖 Hasta luego. ¡Fue un placer ayudarte!\")\n",
+        "        stats_conversacion()\n",
+        "        break\n",
+        "\n",
+        "    if not entrada:\n",
+        "        continue\n",
+        "\n",
+        "    respuesta = chatbot_con_memoria(entrada)\n",
+        "    print(f\"🤖 Chatbot: {respuesta}\\n\")"
+      ],
+      "execution_count": 64,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "✓ Conversación reiniciada\n",
+            "═══════════════════════════════════════\n",
+            "  Chatbot activado — tema: \n",
+            "Eres Clancy, un experto en Calculo 1.\n",
+            "Respondes s...\n",
+            "  Escribe 'salir' para terminar\n",
+            "═══════════════════════════════════════\n",
+            "\n"
+          ]
+        },
+        {
+          "output_type": "error",
+          "ename": "KeyboardInterrupt",
+          "evalue": "Interrupted by user",
+          "traceback": [
+            "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+            "\u001b[0;31mKeyboardInterrupt\u001b[0m                         Traceback (most recent call last)",
+            "\u001b[0;32m/tmp/ipykernel_565/688618329.py\u001b[0m in \u001b[0;36m<cell line: 0>\u001b[0;34m()\u001b[0m\n\u001b[1;32m      6\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      7\u001b[0m \u001b[0;32mwhile\u001b[0m \u001b[0;32mTrue\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 8\u001b[0;31m     \u001b[0mentrada\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0minput\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"👤 Tú: \"\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mstrip\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      9\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     10\u001b[0m     \u001b[0;32mif\u001b[0m \u001b[0mentrada\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mlower\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32min\u001b[0m \u001b[0;34m[\u001b[0m\u001b[0;34m\"salir\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m\"exit\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m\"quit\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m\"bye\"\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.12/dist-packages/ipykernel/kernelbase.py\u001b[0m in \u001b[0;36mraw_input\u001b[0;34m(self, prompt)\u001b[0m\n\u001b[1;32m   1175\u001b[0m                 \u001b[0;34m\"raw_input was called, but this frontend does not support input requests.\"\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1176\u001b[0m             )\n\u001b[0;32m-> 1177\u001b[0;31m         return self._input_request(\n\u001b[0m\u001b[1;32m   1178\u001b[0m             \u001b[0mstr\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mprompt\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1179\u001b[0m             \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_parent_ident\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m\"shell\"\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.12/dist-packages/ipykernel/kernelbase.py\u001b[0m in \u001b[0;36m_input_request\u001b[0;34m(self, prompt, ident, parent, password)\u001b[0m\n\u001b[1;32m   1217\u001b[0m             \u001b[0;32mexcept\u001b[0m \u001b[0mKeyboardInterrupt\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1218\u001b[0m                 \u001b[0;31m# re-raise KeyboardInterrupt, to truncate traceback\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 1219\u001b[0;31m                 \u001b[0;32mraise\u001b[0m \u001b[0mKeyboardInterrupt\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"Interrupted by user\"\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfrom\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   1220\u001b[0m             \u001b[0;32mexcept\u001b[0m \u001b[0mException\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1221\u001b[0m                 \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mlog\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mwarning\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"Invalid Message:\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mexc_info\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mTrue\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;31mKeyboardInterrupt\u001b[0m: Interrupted by user"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def chatbot_mejorado(pregunta, temperatura=0.7, max_historial=6):\n",
+        "    historial.append({\"role\": \"user\", \"content\": pregunta})\n",
+        "\n",
+        "    hist_reciente = historial[-max_historial:]\n",
+        "\n",
+        "    prompt = f\"<|system|>\\n{SYSTEM_PROMPT}\\n\"\n",
+        "    for msg in hist_reciente:\n",
+        "        rol = \"user\" if msg[\"role\"] == \"user\" else \"assistant\"\n",
+        "        prompt += f\"<|{rol}|>\\n{msg['content']}\\n\"\n",
+        "    prompt += \"<|assistant|>\"\n",
+        "\n",
+        "    respuesta = llamar_modelo(prompt, temperatura)\n",
+        "    historial.append({\"role\": \"assistant\", \"content\": respuesta})\n",
+        "    return respuesta\n",
+        "\n",
+        "def stats_conversacion():\n",
+        "    turnos     = len([m for m in historial if m[\"role\"]==\"user\"])\n",
+        "    palabras   = sum(len(m[\"content\"].split()) for m in historial)\n",
+        "    print(f\"Turnos de conversación: {turnos}\")\n",
+        "    print(f\"Palabras totales:       {palabras}\")\n",
+        "    print(f\"Mensajes en historial:  {len(historial)}\")"
+      ],
+      "metadata": {
+        "id": "lWerrGbEkua9"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
